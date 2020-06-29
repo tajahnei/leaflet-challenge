@@ -78,22 +78,54 @@ function createMap(earthquakes) {
       accessToken: API_KEY
   });
 
+
+
+  // Define Satellite Map
+  var satellitemap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+    attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
+    maxZoom: 18,
+    id: "mapbox.satellite",
+    accessToken: API_KEY
+  });
+
+ 
+
+  // Create the faultline layer
+  var faultLine = new L.LayerGroup();
+
+  // Query to retrieve the faultline data
+ var faultlinequery = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json";
+
+ // Create the faultlines and add them to the faultline layer
+ d3.json(faultlinequery, function(data) {
+   L.geoJSON(data, {
+     style: function() {
+       return {color: "red", fillOpacity: .2}
+     }
+   }).addTo(faultLine)
+ }) 
+
   // Define a baseMaps object to hold our base layers
   var baseMaps = {
     "Street Map": streetmap,
-    "Dark Map": darkmap
+    "Dark Map": darkmap,
+    "Satellite Map": satellitemap,
+    
   };
 
   // Create overlay object to hold our overlay layer
   var overlayMaps = {
-    Earthquakes: earthquakes
+    Earthquakes: earthquakes,
+    FaultLines: faultLine
   };
+
+
 
   // Create our map, giving it the streetmap and earthquakes layers to display on load
   var myMap = L.map("map", {
     center: [37.09, -95.71],
     zoom: 4,
-    layers: [streetmap, earthquakes]
+    layers: [streetmap, earthquakes, faultLine]
   });
 
   // Create a layer control
@@ -102,5 +134,43 @@ function createMap(earthquakes) {
   L.control.layers(baseMaps, overlayMaps, {
     collapsed: false
   }).addTo(myMap);
+
 }
+
+ 
+
+// color function to be used when creating the legend
+function getColor(d) {
+    return d > 5 ? '#d73027' :
+           d <= 5 ? '#d73027' : 
+           d <= 4  ? '#fc8d59' :
+           d <= 3  ? '#ff9933' :
+           d <= 2  ? '#ffcc33' :
+           d <= 1  ? '#ffff33' :
+                    '#ccff33';
+  }
+
+// Add legend to the map
+var legend = L.control({position: 'bottomright'});
+  
+legend.onAdd = function (map) {
+  
+    var div = L.DomUtil.create('div', 'info legend'),
+          mags = [0, 1, 2, 3, 4, 5],
+          labels = [];
+  
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < mags.length; i++) {
+          div.innerHTML +=
+              '<i style="background:' + getColor(mags[i] + 1) + '"></i> ' +
+              mags[i] + (mags[i + 1] ? '&ndash;' + mags[i + 1] + '<br>' : '+');
+    }
+  
+    return div;
+  };
+  
+legend.addTo(myMap);
+
+
+
 
